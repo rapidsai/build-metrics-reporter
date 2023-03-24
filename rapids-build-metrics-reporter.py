@@ -16,7 +16,7 @@ parser.add_argument(
     "--fmt",
     type=str,
     default="csv",
-    choices=["csv", "xml", "html"],
+    choices=["csv", "xml", "html", "terminal"],
     help="output format (to stdout)",
 )
 parser.add_argument(
@@ -379,6 +379,32 @@ def output_csv(entries, sorted_list, cmp_entries, args):
             print(",", diff_time, sep="", end="")
         print()
 
+def output_terminal(entries, sorted_list, cmp_entries, args):
+    for name in sorted_list:
+        entry = entries[name]
+        build_time_sec = (entry[1] - entry[0]) / 1000.0
+        file_size = entry[2]
+
+        if file_size < 2**20:
+            # Less than 1MB
+            file_size_str = f"{file_size // 1024 : 4d}K"
+        else:
+            file_size_str = f"{file_size // (1024 * 1024) : 4d}M"
+
+        if cmp_entries is None:
+            print(f"{build_time_sec:6.1f}s  {file_size_str}  {name}")
+        else:
+            cmp_entry = cmp_entries.get(name, None)
+            if cmp_entry is None:
+                diff_str = "              "
+            else:
+                cmp_build_time_sec = (cmp_entry[1] - cmp_entry[0]) / 1000.0
+                time_diff_abs = build_time_sec - cmp_build_time_sec
+                time_diff_rel = 100.0 * (time_diff_abs / cmp_build_time_sec)
+                diff_str = f"{time_diff_abs:+6.1f}s {time_diff_rel:+5.1f}%"
+
+            print(f"{build_time_sec:6.1f}s {diff_str}  {file_size_str}  {name}")
+
 
 # parse log file into map
 entries = build_log_map(log_file)
@@ -400,5 +426,7 @@ if output_fmt == "xml":
     output_xml(entries, sorted_list, args)
 elif output_fmt == "html":
     output_html(entries, sorted_list, cmp_entries, args)
-else:
+elif output_fmt == "csv":
     output_csv(entries, sorted_list, cmp_entries, args)
+else:
+    output_terminal(entries, sorted_list, cmp_entries, args)
