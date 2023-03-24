@@ -56,15 +56,32 @@ def get_object_files(ninja, build_dir, target):
     build_dir = Path(build_dir)
     out = run(ninja, "-C", build_dir, "-t", "inputs", target, stdout=PIPE)
     out_str = out.stdout.decode(encoding="utf-8", errors="strict")
+
+    target_path = build_dir / target
+
+    # If the target exists and is an object file, add it to the list of
+    # candidates.
+    if target_path.exists() and str(target_path).endswith(".o"):
+        additional_objects = [target_path]
+    else:
+        additional_objects = []
+
     return [
         str(build_dir / line.strip())
         for line in out_str.splitlines()
         if line.endswith(".o")
-    ]
+    ] + additional_objects
 
 
 def main(
-    build_dir, target, top_n, summary_only=True, display_progress=True, verbose=True
+    build_dir,
+    target,
+    top_n,
+    skip_details=False,
+    skip_kernels=False,
+    skip_objects=False,
+    display_progress=True,
+    verbose=True,
 ):
     # Check that we have the right binaries in the environment.
     binary_names = ["ninja", "grep", "cuobjdump", "cu++filt"]
@@ -113,42 +130,46 @@ def main(
         obj_counts += Counter({obj: count})
 
     # Print summary statistics
-    print("\nObjects with most kernels")
-    print("=========================\n")
-    for obj, total_count in obj_counts.most_common()[:top_n]:
-        print(
-            f"{total_count:4d} kernel instances in {obj} ({len(obj2kernel[obj])} kernel templates)"
-        )
+    if not skip_objects:
+        print("\nObjects with most kernels")
+        print("=========================\n")
+        for obj, total_count in obj_counts.most_common()[:top_n]:
+            print(
+                f"{total_count:4d} kernel instances in {obj} ({len(obj2kernel[obj])} kernel templates)"
+            )
 
-    print("\nKernels with most instances")
-    print("===========================\n")
-    for kernel, total_count in kernel_counts.most_common()[:top_n]:
-        print(
-            f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects."
-        )
+    if not skip_kernels:
+        print("\nKernels with most instances")
+        print("===========================\n")
+        for kernel, total_count in kernel_counts.most_common()[:top_n]:
+            print(
+                f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects."
+            )
 
-    if summary_only:
+    if skip_details:
         return
 
-    print("\nDetails: Objects")
-    print("================\n")
-    for obj, total_count in obj_counts.most_common()[:top_n]:
-        print(
-            f"{total_count:4d} kernel instances in {obj} across {len(obj2kernel[obj])} templates:"
-        )
-        for kernel, c in obj2kernel[obj].most_common():
-            print(f"    {c:4d}: {kernel}")
-        print()
+    if not skip_objects:
+        print("\nDetails: Objects")
+        print("================\n")
+        for obj, total_count in obj_counts.most_common()[:top_n]:
+            print(
+                f"{total_count:4d} kernel instances in {obj} across {len(obj2kernel[obj])} templates:"
+            )
+            for kernel, c in obj2kernel[obj].most_common():
+                print(f"    {c:4d}: {kernel}")
+            print()
 
-    print("\nDetails: Kernels")
-    print("================\n")
-    for kernel, total_count in kernel_counts.most_common()[:top_n]:
-        print(
-            f"\n{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects:"
-        )
-        for obj, c in kernel2obj[kernel].most_common():
-            print(f"    {c:4d}: {obj}")
-        print()
+    if not skip_kernels:
+        print("\nDetails: Kernels")
+        print("================\n")
+        for kernel, total_count in kernel_counts.most_common()[:top_n]:
+            print(
+                f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects:"
+            )
+            for obj, c in kernel2obj[kernel].most_common():
+                print(f"    {c:4d}: {obj}")
+            print()
 
 
 if __name__ == "__main__":
@@ -168,16 +189,27 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--summary",
+        "--skip-details",
         action="store_true",
         help="Show a summary of statistics, but no details.",
     )
-    parser.set_defaults(summary=False)
+    parser.set_defaults(skip_details=False)
 
     parser.add_argument(
         "--no-progress", action="store_true", help="Do not show progress indication"
     )
     parser.set_defaults(no_progress=False)
+
+    parser.add_argument(
+        "--skip-objects", action="store_true", help="Do not show statistics on objects"
+    )
+    parser.set_defaults(skip_objects=False)
+
+    parser.add_argument(
+        "--skip-kernels", action="store_true", help="Do not show statistics on kernels"
+    )
+    parser.set_defaults(skip_kernels=False)
+
     parser.add_argument("--verbose", action="store_true")
     parser.set_defaults(verbose=False)
 
@@ -187,7 +219,9 @@ if __name__ == "__main__":
         args.build_dir,
         args.target,
         args.top_n,
-        summary_only=args.summary,
+        skip_details=args.skip_details,
+        skip_kernels=args.skip_kernels,
+        skip_objects=args.skip_objects,
         display_progress=not args.no_progress,
         verbose=args.verbose,
     )
