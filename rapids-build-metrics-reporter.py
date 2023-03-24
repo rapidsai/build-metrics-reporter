@@ -15,7 +15,7 @@ parser.add_argument(
 parser.add_argument(
     "--fmt",
     type=str,
-    default="csv",
+    default="terminal",
     choices=["csv", "xml", "html", "terminal"],
     help="output format (to stdout)",
 )
