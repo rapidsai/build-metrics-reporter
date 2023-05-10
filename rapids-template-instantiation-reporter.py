@@ -39,16 +39,19 @@ def extract_template(line):
 
 
 def get_kernels(cuobjdump, cu_filt, grep, object_file_path):
-    # Executes:
-    # > cuobjdump -res-usage file | cu++filt | grep Function
-    step1 = run(cuobjdump, "-res-usage", object_file_path, stdout=PIPE)
-    step2 = run(cu_filt, input=step1.stdout, stdout=PIPE)
-    step3 = run(grep, "Function", input=step2.stdout, stdout=PIPE)
+    try:
+        # Executes:
+        # > cuobjdump -res-usage file | cu++filt | grep Function
+        step1 = run(cuobjdump, "-res-usage", object_file_path, stdout=PIPE)
+        step2 = run(cu_filt, input=step1.stdout, stdout=PIPE)
+        step3 = run(grep, "Function", input=step2.stdout, stdout=PIPE)
 
-    out_str = step3.stdout.decode(encoding="utf-8", errors="strict")
+        out_str = step3.stdout.decode(encoding="utf-8", errors="strict")
 
-    return [extract_template(line) for line in out_str.splitlines()]
-
+        return [extract_template(line) for line in out_str.splitlines()]
+    except Exception as e:
+        print(e)
+        return []
 
 def get_object_files(ninja, build_dir, target):
     # Executes:
