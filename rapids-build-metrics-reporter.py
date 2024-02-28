@@ -1,12 +1,10 @@
 #
-# Copyright (c) 2021-2023, NVIDIA CORPORATION.
+# Copyright (c) 2021-2024, NVIDIA CORPORATION.
 #
 import argparse
 import os
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from xml.dom import minidom
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -16,7 +14,7 @@ parser.add_argument(
     "--fmt",
     type=str,
     default="terminal",
-    choices=["csv", "xml", "html", "terminal"],
+    choices=["csv", "html", "terminal"],
     help="output format (to stdout)",
 )
 parser.add_argument(
@@ -67,36 +65,6 @@ def build_log_map(log_file):
 
     return entries
 
-
-# output results in XML format
-def output_xml(entries, sorted_list, args):
-    root = ET.Element("testsuites")
-    testsuite = ET.Element(
-        "testsuite",
-        attrib={
-            "name": "build-time",
-            "tests": str(len(sorted_list)),
-            "failures": str(0),
-            "errors": str(0),
-        },
-    )
-    root.append(testsuite)
-    for name in sorted_list:
-        entry = entries[name]
-        build_time = float(entry[1] - entry[0]) / 1000
-        item = ET.Element(
-            "testcase",
-            attrib={
-                "classname": "BuildTime",
-                "name": name,
-                "time": str(build_time),
-            },
-        )
-        testsuite.append(item)
-
-    tree = ET.ElementTree(root)
-    xmlstr = minidom.parseString(ET.tostring(root)).toprettyxml(indent="   ")
-    print(xmlstr)
 
 
 # utility converts a millisecond value to a column width in pixels
@@ -353,7 +321,7 @@ def output_html(entries, sorted_list, cmp_entries, args):
         print(
             "<tr><td",
             white,
-            ">time change &lt; 20%% or build time &lt; 1 minute</td></tr>",
+            ">time change &lt; 20% or build time &lt; 1 minute</td></tr>",
         )
         print("</table>")
 
@@ -422,9 +390,7 @@ sorted_list = sorted(
 # load the comparison build log if available
 cmp_entries = build_log_map(cmp_file) if cmp_file else None
 
-if output_fmt == "xml":
-    output_xml(entries, sorted_list, args)
-elif output_fmt == "html":
+if output_fmt == "html":
     output_html(entries, sorted_list, cmp_entries, args)
 elif output_fmt == "csv":
     output_csv(entries, sorted_list, cmp_entries, args)
