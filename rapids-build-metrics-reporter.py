@@ -35,6 +35,7 @@ log_file = args.log_file
 output_fmt = args.fmt
 cmp_file = args.cmp_log
 
+
 # build a map of the log entries
 def build_log_map(log_file):
     entries = {}
@@ -64,7 +65,6 @@ def build_log_map(log_file):
             entries[entry[0]] = (entry[1], entry[2], entry[3])
 
     return entries
-
 
 
 # utility converts a millisecond value to a column width in pixels
@@ -142,6 +142,11 @@ def format_file_size(input_size):
     if input_size < 0:
         file_size_str = "-" + file_size_str
     return file_size_str
+
+
+# adjust name for display
+def format_file_name(name):
+    return name.replace("placehold_placehold", "ph")
 
 
 # Output chart results in HTML format
@@ -223,7 +228,8 @@ def output_html(entries, sorted_list, cmp_entries, args):
             print("<td height='20px' width='", size, "px' ", sep="", end="")
             # title text is shown as hover-text by most browsers
             print(color, "title='", end="")
-            print(name, "\n", build_time_str, "' ", sep="", end="")
+            display_name = format_file_name(name)
+            print(display_name, "\n", build_time_str, "' ", sep="", end="")
             # centers the name if it fits in the box
             print("align='center' nowrap>", end="")
             # use a slightly smaller, fixed-width font
@@ -267,7 +273,8 @@ def output_html(entries, sorted_list, cmp_entries, args):
         file_size_str = format_file_size(file_size)
 
         # output entry row
-        print("<tr ", color, "><td>", name, "</td>", sep="", end="")
+        display_name = format_file_name(name)
+        print("<tr ", color, "><td>", display_name, "</td>", sep="", end="")
         print("<td align='right'>", build_time_str, "</td>", sep="", end="")
         print("<td align='right'>", file_size_str, "</td>", sep="", end="")
         # output diff column
@@ -346,6 +353,7 @@ def output_csv(entries, sorted_list, cmp_entries, args):
             diff_time = build_time - (cmp_entry[1] - cmp_entry[0])
             print(",", diff_time, sep="", end="")
         print()
+
 
 def output_terminal(entries, sorted_list, cmp_entries, args):
     for name in sorted_list:
