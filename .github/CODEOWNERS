@@ -1,0 +1,5 @@
+# default if no other rules match
+* @rapidsai/ci-codeowners
+
+# core project logic
+* @rapidsai/build-metrics-reporter-write
