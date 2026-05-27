@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: Copyright (c) 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 
 import argparse
-import subprocess
-from subprocess import PIPE
 import shutil
+import subprocess
 from collections import Counter
 from pathlib import Path
+from subprocess import PIPE
 
 
 def log(msg, verbose=True):
@@ -30,7 +32,7 @@ def progress(iterable, display=True):
 
 def extract_template(line):
     # Example line:
-    #  Function void raft::random::detail::rmat_gen_kernel<long, double>(T1 *, T1 *, T1 *, const T2 *, T1, T1, T1, T1, raft::random::RngState):
+    #  Function void raft::random::detail::rmat_gen_kernel<long, double>(T1 *, T1 *, T1 *, const T2 *, T1, T1, T1, T1, raft::random::RngState):  # noqa: E501
     line = line.replace("Function", "").replace("void", "").strip()
     if "<" in line:
         line = line.split("<")[0]
@@ -53,6 +55,7 @@ def get_kernels(cuobjdump, cu_filt, grep, object_file_path):
         print(e)
         return []
 
+
 def get_object_files(ninja, build_dir, target):
     # Executes:
     # > ninja -C build/dir -t input <target>
@@ -69,11 +72,7 @@ def get_object_files(ninja, build_dir, target):
     else:
         additional_objects = []
 
-    return [
-        str(build_dir / line.strip())
-        for line in out_str.splitlines()
-        if line.endswith(".o")
-    ] + additional_objects
+    return [str(build_dir / line.strip()) for line in out_str.splitlines() if line.endswith(".o")] + additional_objects
 
 
 def main(
@@ -106,14 +105,8 @@ def main(
 
     # Compute the counts of each object-kernel combination
     get_kernel_bins = (cuobjdump, cu_filt, grep)
-    obj_kernel_tuples = (
-        (obj, kernel)
-        for obj in object_files
-        for kernel in get_kernels(*get_kernel_bins, obj)
-    )
-    obj_kernel_counts = Counter(
-        tup for tup in progress(obj_kernel_tuples, display=display_progress)
-    )
+    obj_kernel_tuples = ((obj, kernel) for obj in object_files for kernel in get_kernels(*get_kernel_bins, obj))
+    obj_kernel_counts = Counter(tup for tup in progress(obj_kernel_tuples, display=display_progress))
 
     # Create an index with the kernel counts per object and the object count per kernel:
     obj2kernel = dict()
@@ -137,17 +130,13 @@ def main(
         print("\nObjects with most kernels")
         print("=========================\n")
         for obj, total_count in obj_counts.most_common()[:top_n]:
-            print(
-                f"{total_count:4d} kernel instances in {obj} ({len(obj2kernel[obj])} kernel templates)"
-            )
+            print(f"{total_count:4d} kernel instances in {obj} ({len(obj2kernel[obj])} kernel templates)")
 
     if not skip_kernels:
         print("\nKernels with most instances")
         print("===========================\n")
         for kernel, total_count in kernel_counts.most_common()[:top_n]:
-            print(
-                f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects."
-            )
+            print(f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects.")
 
     if skip_details:
         return
@@ -156,9 +145,7 @@ def main(
         print("\nDetails: Objects")
         print("================\n")
         for obj, total_count in obj_counts.most_common()[:top_n]:
-            print(
-                f"{total_count:4d} kernel instances in {obj} across {len(obj2kernel[obj])} templates:"
-            )
+            print(f"{total_count:4d} kernel instances in {obj} across {len(obj2kernel[obj])} templates:")
             for kernel, c in obj2kernel[obj].most_common():
                 print(f"    {c:4d}: {kernel}")
             print()
@@ -167,9 +154,7 @@ def main(
         print("\nDetails: Kernels")
         print("================\n")
         for kernel, total_count in kernel_counts.most_common()[:top_n]:
-            print(
-                f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects:"
-            )
+            print(f"{total_count:4d} instances of {kernel} in {len(kernel2obj[kernel])} objects:")
             for obj, c in kernel2obj[kernel].most_common():
                 print(f"    {c:4d}: {obj}")
             print()
@@ -198,19 +183,13 @@ if __name__ == "__main__":
     )
     parser.set_defaults(skip_details=False)
 
-    parser.add_argument(
-        "--no-progress", action="store_true", help="Do not show progress indication"
-    )
+    parser.add_argument("--no-progress", action="store_true", help="Do not show progress indication")
     parser.set_defaults(no_progress=False)
 
-    parser.add_argument(
-        "--skip-objects", action="store_true", help="Do not show statistics on objects"
-    )
+    parser.add_argument("--skip-objects", action="store_true", help="Do not show statistics on objects")
     parser.set_defaults(skip_objects=False)
 
-    parser.add_argument(
-        "--skip-kernels", action="store_true", help="Do not show statistics on kernels"
-    )
+    parser.add_argument("--skip-kernels", action="store_true", help="Do not show statistics on kernels")
     parser.set_defaults(skip_kernels=False)
 
     parser.add_argument("--verbose", action="store_true")
